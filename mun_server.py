@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
@@ -8,6 +8,12 @@ socketio = SocketIO(app)
 # Dictionnaire pour stocker les utilisateurs connectés (ID de session -> nom)
 users = {}
 
+# Liste des comités actifs (exemple: [nom, créateur, type, langue, participants])
+committees = [
+    {"nom":"NOM COP 1", "createur":"Nom Joueur 1", "type":"vocal", "langue":"Français", "nombre":5, "code":1235},
+    {"nom":"NOM COP 2", "createur":"Nom Joueur 2", "type":"chat", "langue":"Anglais", "nombre":10, "code":1849}
+]
+
 @app.route('/')
 def login():
     return render_template('login.html')
@@ -15,6 +21,17 @@ def login():
 @app.route('/chat')
 def comite():
     return render_template('comite.html')
+
+# Route pour vérifier le code
+@app.route('/check_code', methods=['POST'])
+def check_code():
+    data = request.json
+    entered_code = data.get('code')
+    for COP in committees:
+        if int(entered_code) == int(COP["code"]):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "message": "Code invalide"})
 
 # Événement de connexion
 @socketio.on('connect')
