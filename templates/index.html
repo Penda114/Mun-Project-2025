@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salon de Discussion</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #login, #chat {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #chat {
+            display: none;
+        }
+        #messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #users {
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div id="login">
+        <h2>Connexion au salon</h2>
+        <input type="text" id="username" placeholder="Entrez votre nom" required>
+        <button onclick="joinChat()">Rejoindre</button>
+    </div>
+    <div id="chat">
+        <h2>Salon de discussion</h2>
+        <div id="users"></div>
+        <div id="messages"></div>
+        <input type="text" id="message" placeholder="Tapez votre message" required>
+        <button onclick="sendMessage()">Envoyer</button>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function joinChat() {
+            const username = document.getElementById('username').value.trim();
+            if (username) {
+                socket.emit('join', { username });
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('chat').style.display = 'block';
+            }
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('send_message', { message });
+                messageInput.value = '';
+            }
+        }
+
+        socket.on('message', (data) => {
+            const messages = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${data.username}: ${data.message}`;
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        socket.on('update_users', (users) => {
+            const usersDiv = document.getElementById('users');
+            usersDiv.textContent = `Utilisateurs connectés : ${users.join(', ') || 'Aucun'}`;
+        });
+
+        // Permettre l'envoi de messages avec la touche Entrée
+        document.getElementById('message').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinChat();
+        });
+    </script>
+</body>
+</html>
