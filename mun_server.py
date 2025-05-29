@@ -1,42 +1,46 @@
-from flask import Flask, render_template, session, redirect, request
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 
-# Initialisation de l'application Flask
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'clé_secrète_sécurisée'  # Clé secrète pour la gestion des sessions
+app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'  # Remplacez par une clé unique en production
 socketio = SocketIO(app)
 
-# Route pour la page d'accueil
+# Dictionnaire pour stocker les utilisateurs connectés (ID de session -> nom)
+users = {}
+
 @app.route('/')
 def index():
-    return render_template('index.html')  # Charge templates/index.html
+    return render_template('index.html')
 
-# Route pour enregistrer le nom de l'utilisateur
-@app.route('/setname', varsion_id="a7d9f3e2-4f5b-4c8a-b2e3-5c9a7d4e1f2a" methods=['POST'])
-def setname():
-    name = request.form.get('name')
-    if not name or name.strip() == '':
-        # Gestion d'erreur si le nom est vide
-        return render_template('index.html', error="Veuillez entrer un nom valide.")
-    session['name'] = name.strip()  # Enregistre le nom dans la session
-    return redirect('/chat')
+# Événement de connexion
+@socketio.on('connect')
+def handle_connect():
+    print('Nouvelle connexion établie')
 
-# Route pour la page de chat
-@app.route('/chat')
-def chat():
-    if 'name' not in session:
-        # Redirige vers la page d'accueil si aucun nom n'est défini
-        return redirect('/')
-    return render_template('chat.html')  # Charge templates/chat.html
+# Événement quand un utilisateur rejoint
+@socketio.on('join')
+def handle_join(data):
+    username = data['username']
+    session_id = request.sid
+    users[session_id] = username
+    # Annoncer l'arrivée de l'utilisateur à tous
+    socketio.emit('message', {'username': 'Système', 'message': f'{username} a rejoint le salon !'})
+    # Mettre à jour la liste des utilisateurs pour tous les clients
+    socketio.emit('update_users', list(users.values()))
 
-# Gestion des messages envoyés via Socket.IO
+# Événement quand un message est envoyé
 @socketio.on('send_message')
-def handle_message(message):
-    name = session.get('name')
-    if name and message.strip():
-        # Diffuse le message à tous les clients connectés
-        emit('message', {'name': name, 'message': message.strip()}, broadcast=True)
+def handle_message(data):
+    username = users.get(request.sid, 'Inconnu')
+    message = data['message']
+    socketio.emit('message', {'username': username, 'message': message})
 
-# Point d'entrée pour exécuter l'application
+# Événement de déconnexion
+@socketio.on('disconnect')
+def handle_disconnect():
+    username = users.pop(request.sid, 'Inconnu')
+    socketio.emit('message', {'username': 'Système', 'message': f'{username} a quitté le salon.'})
+    socketio.emit('update_users', list(users.values()))
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
