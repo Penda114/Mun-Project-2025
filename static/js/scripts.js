@@ -66,32 +66,34 @@ socket.on('update_users', (users) => {
     }
 });
 
-// Populate committee list (static for now, to be updated with real data later)
-function updateCommitteeList(committees) {
-    const committeeList = document.getElementById('committeeList');
-    if (committeeList) {
-        committeeList.innerHTML = '';
-        if (committees.length === 0) {
-            committeeList.innerHTML = '<p>aucun comité encore actif</p>';
-        } else {
-            committees.forEach(committee => {
-                const div = document.createElement('div');
-                div.classList.add('committee-item');
-                div.innerHTML = `
-                    <span>${committee[1]}</span>
-                    <span>${committee[2]}</span>
-                    <span>${committee[3]}</span>
-                    <span>${committee[0]}</span>
-                    <span>${committee[4]}/20</span>
-                `;
-                committeeList.appendChild(div);
-            });
-        }
-    }
+// Populate committee list by fetching from the server
+function updateCommitteeList() {
+    fetch('/get_committees')
+        .then(response => response.json())
+        .then(committees => {
+            const committeeList = document.getElementById('committeeList');
+            if (committeeList) {
+                committeeList.innerHTML = '';
+                if (committees.length === 0) {
+                    committeeList.innerHTML = '<p>aucun comité encore actif</p>';
+                } else {
+                    committees.forEach(committee => {
+                        const div = document.createElement('div');
+                        div.classList.add('committee-item');
+                        div.innerHTML = `
+                            <span>${committee.creator}</span>
+                            <span>${committee.type}</span>
+                            <span>${committee.language}</span>
+                            <span>${committee.name}</span>
+                            <span>${committee.participants}/20</span>
+                        `;
+                        committeeList.appendChild(div);
+                    });
+                }
+            }
+        })
+        .catch(error => console.error('Erreur:', error));
 }
 
-// Initial population with hardcoded data
-updateCommitteeList([
-    ["NOM COP 1", "Nom Joueur 1", "vocal", "Français", 5],
-    ["NOM COP 2", "Nom Joueur 2", "chat", "Anglais", 10]
-]);
+// Initial population
+updateCommitteeList();

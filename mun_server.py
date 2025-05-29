@@ -1,21 +1,39 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
+import json
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'votre_cle_secrete_ici'  # Remplacez par une clé unique en production
 socketio = SocketIO(app)
 
+# Chemin du fichier JSON pour stocker les comités
+COMMITTEES_FILE = "committees.json"
+
 # Dictionnaire pour stocker les utilisateurs connectés (ID de session -> nom)
 users = {}
 
-# Liste des comités actifs (exemple: [nom, créateur, type, langue, participants, code])
-committees = [
-    ["NOM COP 1", "Nom Joueur 1", "vocal", "Français", 0, "1234"],
-    ["NOM COP 2", "Nom Joueur 2", "chat", "Anglais", 0, "5678"]
-]
-
 # Liste prédéfinie des thèmes possibles
 THEMES = ["Environnement", "Santé", "Éducation", "Sécurité", "Technologie"]
+
+# Fonction pour charger les comités depuis le fichier JSON
+def load_committees():
+    if not os.path.exists(COMMITTEES_FILE):
+        # Initialiser avec des données par défaut si le fichier n'existe pas
+        initial_data = [
+            {"name": "NOM COP 1", "creator": "Nom Joueur 1", "type": "vocal", "language": "Français", "participants": 5, "code": "1234"},
+            {"name": "NOM COP 2", "creator": "Nom Joueur 2", "type": "chat", "language": "Anglais", "participants": 10, "code": "5678"}
+        ]
+        with open(COMMITTEES_FILE, 'w') as f:
+            json.dump(initial_data, f, indent=4)
+        return initial_data
+    with open(COMMITTEES_FILE, 'r') as f:
+        return json.load(f)
+
+# Fonction pour sauvegarder les comités dans le fichier JSON
+def save_committees(committees):
+    with open(COMMITTEES_FILE, 'w') as f:
+        json.dump(committees, f, indent=4)
 
 @app.route('/')
 def login():
@@ -30,11 +48,19 @@ def comite():
 def check_code():
     data = request.json
     entered_code = data.get('code')
-    valid_code = "1234"  # Code valide temporaire
-    if entered_code == valid_code:
-        return jsonify({"success": True})
-    else:
-        return jsonify({"success": False, "message": "Code invalide"})
+    committees = load_committees()
+    
+    # Vérifier si le code existe dans les comités
+    for COP in committees:
+        if entered_code == COP["code"]:
+            return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Code invalide"})
+
+# Route pour récupérer la liste des comités
+@app.route('/get_committees', methods=['GET'])
+def get_committees():
+    committees = load_committees()
+    return jsonify(committees)
 
 # Route pour la page de création
 @app.route('/create', methods=['GET', 'POST'])
@@ -46,12 +72,24 @@ def create():
         code = request.form['code'].strip()
         username = list(users.values())[0] if users else "Inconnu"  # Utilise le premier utilisateur connecté comme créateur
 
+        committees = load_committees()
+
         # Vérifier si le code existe déjà
-        if any(committee[5] == code for committee in committees):
-            return render_template('create.html', themes=THEMES, error="Ce code est déjà utilisé.")
+        for COP in committees:
+            if code == COP["code"]:
+                return render_template('create.html', themes=THEMES, error="Ce code est déjà utilisé.")
 
         # Ajouter le nouveau comité
-        committees.append([theme, username, committee_type, language, 0, code])
+        new_committee = {
+            "name": theme,
+            "creator": username,
+            "type": committee_type,
+            "language": language,
+            "participants": 0,
+            "code": code
+        }
+        committees.append(new_committee)
+        save_committees(committees)
         return redirect(url_for('comite'))
 
     return render_template('create.html', themes=THEMES)

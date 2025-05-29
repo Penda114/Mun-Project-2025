@@ -1,0 +1,42 @@
+[
+    {
+        "name": "NOM COP 1",
+        "creator": "Nom Joueur 1",
+        "type": "vocal",
+        "language": "Fran\u00e7ais",
+        "participants": 5,
+        "code": "1234"
+    },
+    {
+        "name": "NOM COP 2",
+        "creator": "Nom Joueur 2",
+        "type": "chat",
+        "language": "Anglais",
+        "participants": 10,
+        "code": "5678"
+    },
+    {
+        "name": "Environnement",
+        "creator": "Inconnu",
+        "type": "vocal",
+        "language": "Fran\u00e7ais",
+        "participants": 0,
+        "code": "3456"
+    },
+    {
+        "name": "Environnement",
+        "creator": "Inconnu",
+        "type": "vocal",
+        "language": "Fran\u00e7ais",
+        "participants": 0,
+        "code": "54379"
+    },
+    {
+        "name": "Environnement",
+        "creator": "Inconnu",
+        "type": "vocal",
+        "language": "Fran\u00e7ais",
+        "participants": 0,
+        "code": "kbsf"
+    }
+]
