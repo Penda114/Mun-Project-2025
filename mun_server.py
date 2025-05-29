@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
@@ -8,11 +8,14 @@ socketio = SocketIO(app)
 # Dictionnaire pour stocker les utilisateurs connectés (ID de session -> nom)
 users = {}
 
-# Liste des comités actifs (exemple: [nom, créateur, type, langue, participants])
+# Liste des comités actifs (exemple: [nom, créateur, type, langue, participants, code])
 committees = [
-    {"nom":"NOM COP 1", "createur":"Nom Joueur 1", "type":"vocal", "langue":"Français", "nombre":5, "code":1235},
-    {"nom":"NOM COP 2", "createur":"Nom Joueur 2", "type":"chat", "langue":"Anglais", "nombre":10, "code":1849}
+    ["NOM COP 1", "Nom Joueur 1", "vocal", "Français", 0, "1234"],
+    ["NOM COP 2", "Nom Joueur 2", "chat", "Anglais", 0, "5678"]
 ]
+
+# Liste prédéfinie des thèmes possibles
+THEMES = ["Environnement", "Santé", "Éducation", "Sécurité", "Technologie"]
 
 @app.route('/')
 def login():
@@ -27,11 +30,31 @@ def comite():
 def check_code():
     data = request.json
     entered_code = data.get('code')
-    for COP in committees:
-        if int(entered_code) == int(COP["code"]):
-            return jsonify({"success": True})
-        else:
-            return jsonify({"success": False, "message": "Code invalide"})
+    valid_code = "1234"  # Code valide temporaire
+    if entered_code == valid_code:
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "message": "Code invalide"})
+
+# Route pour la page de création
+@app.route('/create', methods=['GET', 'POST'])
+def create():
+    if request.method == 'POST':
+        theme = request.form['theme']
+        language = request.form['language']
+        committee_type = request.form['type']
+        code = request.form['code'].strip()
+        username = list(users.values())[0] if users else "Inconnu"  # Utilise le premier utilisateur connecté comme créateur
+
+        # Vérifier si le code existe déjà
+        if any(committee[5] == code for committee in committees):
+            return render_template('create.html', themes=THEMES, error="Ce code est déjà utilisé.")
+
+        # Ajouter le nouveau comité
+        committees.append([theme, username, committee_type, language, 0, code])
+        return redirect(url_for('comite'))
+
+    return render_template('create.html', themes=THEMES)
 
 # Événement de connexion
 @socketio.on('connect')

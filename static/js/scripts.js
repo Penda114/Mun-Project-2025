@@ -41,7 +41,12 @@ function checkCode() {
     }
 }
 
+function createRoom() {
+    window.location.href = '/create';
+}
+
 document.getElementById('joinCodeBtn').addEventListener('click', checkCode);
+document.getElementById('createRoomBtn').addEventListener('click', createRoom);
 
 socket.on('message', (data) => {
     const messages = document.getElementById('messages');
