@@ -30,7 +30,7 @@ function checkCode() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('OK');
+                window.location.href = data.redirect;
             } else {
                 alert(data.message);
             }
@@ -80,6 +80,10 @@ function updateCommitteeList() {
                     committees.forEach(committee => {
                         const div = document.createElement('div');
                         div.classList.add('committee-item');
+                        div.style.cursor = 'pointer';
+                        div.addEventListener('click', () => {
+                            window.location.href = `/wait?code=${committee.code}`;
+                        });
                         div.innerHTML = `
                             <span>${committee.creator}</span>
                             <span>${committee.type}</span>

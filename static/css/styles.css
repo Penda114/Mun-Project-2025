@@ -99,6 +99,10 @@ button:disabled {
     border-radius: 4px;
 }
 
+.committee-item:hover {
+    background-color: #f0f0f0;
+}
+
 .committee-item span {
     text-align: center;
 }
@@ -106,4 +110,27 @@ button:disabled {
 label {
     display: block;
     margin-top: 10px;
+}
+
+.participants {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.participant-dot, .empty-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #333;
+}
+
+.participant-dot {
+    background-color: #333;
+}
+
+.empty-dot {
+    background-color: transparent;
 }

@@ -43,7 +43,7 @@ def login():
 def comite():
     return render_template('comite.html')
 
-# Route pour vérifier le code
+# Route pour vérifier le code et rediriger vers la salle d'attente
 @app.route('/check_code', methods=['POST'])
 def check_code():
     data = request.json
@@ -53,7 +53,7 @@ def check_code():
     # Vérifier si le code existe dans les comités
     for COP in committees:
         if entered_code == COP["code"]:
-            return jsonify({"success": True})
+            return jsonify({"success": True, "redirect": f"/wait?code={entered_code}"})
     return jsonify({"success": False, "message": "Code invalide"})
 
 # Route pour récupérer la liste des comités
@@ -61,6 +61,19 @@ def check_code():
 def get_committees():
     committees = load_committees()
     return jsonify(committees)
+
+# Route pour la page d'attente
+@app.route('/wait')
+def wait():
+    code = request.args.get('code')
+    committees = load_committees()
+    
+    # Trouver le comité correspondant au code
+    committee = next((COP for COP in committees if COP["code"] == code), None)
+    if not committee:
+        return "Comité non trouvé", 404
+    
+    return render_template('wait.html', committee=committee)
 
 # Route pour la page de création
 @app.route('/create', methods=['GET', 'POST'])
