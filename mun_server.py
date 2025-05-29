@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 import json
 import os
 
@@ -123,12 +123,29 @@ def handle_join(data):
     # Mettre à jour la liste des utilisateurs pour tous les clients
     socketio.emit('update_users', list(users.values()))
 
-# Événement quand un message est envoyé
+# Événement quand un message est envoyé dans le lobby principal
 @socketio.on('send_message')
 def handle_message(data):
     username = users.get(request.sid, 'Inconnu')
     message = data['message']
     socketio.emit('message', {'username': username, 'message': message})
+
+# Événement pour rejoindre une salle d'attente (chat spécifique au comité)
+@socketio.on('join_waiting_room')
+def join_waiting_room(data):
+    room = data['room']
+    join_room(room)
+    username = users.get(request.sid, 'Inconnu')
+    emit('chat_message', {'username': 'Système', 'message': f'{username} a rejoint la salle d\'attente.'}, room=room)
+
+# Événement pour envoyer un message dans la salle d'attente
+@socketio.on('send_chat_message')
+def handle_chat_message(data):
+    room = data['room']
+    message = data['message']
+    print(data)
+    username = users.get(request.sid, 'Inconnu')
+    emit('chat_message', {'username': username, 'message': message}, room=room)
 
 # Événement de déconnexion
 @socketio.on('disconnect')

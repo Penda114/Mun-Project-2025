@@ -45,6 +45,15 @@ function createRoom() {
     window.location.href = '/create';
 }
 
+function sendChatMessage(room) {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+    if (message) {
+        socket.emit('send_chat_message', { room: room, message: message });
+        chatInput.value = '';
+    }
+}
+
 document.getElementById('joinCodeBtn').addEventListener('click', checkCode);
 document.getElementById('createRoomBtn').addEventListener('click', createRoom);
 
@@ -63,6 +72,17 @@ socket.on('update_users', (users) => {
     const userList = document.getElementById('userList');
     if (userList) {
         userList.textContent = users.join(', ');
+    }
+});
+
+socket.on('chat_message', (data) => {
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.textContent = `${data.username}: ${data.message}`;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 });
 

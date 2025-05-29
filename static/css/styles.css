@@ -49,7 +49,7 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#messages {
+#messages, #chatMessages {
     border: 1px solid #ccc;
     padding: 10px;
     height: 300px;
@@ -75,7 +75,7 @@ button:disabled {
     margin: 5px 0;
 }
 
-.lobby-layout {
+.lobby-layout, .waiting-layout {
     display: flex;
     gap: 20px;
 }
@@ -133,4 +133,13 @@ label {
 
 .empty-dot {
     background-color: transparent;
+}
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input input {
+    flex: 1;
 }
