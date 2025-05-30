@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 import json
 import os
 
@@ -13,17 +13,16 @@ COMMITTEES_FILE = "committees.json"
 # Dictionnaire pour stocker les utilisateurs connectés (ID de session -> nom)
 users = {}
 
+# Dictionnaire pour stocker les joueurs actifs par comité (code -> {sid: {"username": str, "photo": str}})
+players = {}
+
 # Liste prédéfinie des thèmes possibles
 THEMES = ["Environnement", "Santé", "Éducation", "Sécurité", "Technologie"]
 
 # Fonction pour charger les comités depuis le fichier JSON
 def load_committees():
     if not os.path.exists(COMMITTEES_FILE):
-        # Initialiser avec des données par défaut si le fichier n'existe pas
-        initial_data = [
-            {"name": "NOM COP 1", "creator": "Nom Joueur 1", "type": "vocal", "language": "Français", "participants": 5, "code": "1234"},
-            {"name": "NOM COP 2", "creator": "Nom Joueur 2", "type": "chat", "language": "Anglais", "participants": 10, "code": "5678"}
-        ]
+        initial_data = []
         with open(COMMITTEES_FILE, 'w') as f:
             json.dump(initial_data, f, indent=4)
         return initial_data
@@ -50,7 +49,6 @@ def check_code():
     entered_code = data.get('code')
     committees = load_committees()
     
-    # Vérifier si le code existe dans les comités
     for COP in committees:
         if entered_code == COP["code"]:
             return jsonify({"success": True, "redirect": f"/wait?code={entered_code}"})
@@ -68,12 +66,21 @@ def wait():
     code = request.args.get('code')
     committees = load_committees()
     
-    # Trouver le comité correspondant au code
     committee = next((COP for COP in committees if COP["code"] == code), None)
     if not committee:
         return "Comité non trouvé", 404
     
     return render_template('wait.html', committee=committee)
+
+# Route pour la page de jeu
+@app.route('/game')
+def game():
+    code = request.args.get('code')
+    committees = load_committees()
+    committee = next((COP for COP in committees if COP["code"] == code), None)
+    if not committee:
+        return "Comité non trouvé", 404
+    return render_template('game.html', committee=committee)
 
 # Route pour la page de création
 @app.route('/create', methods=['GET', 'POST'])
@@ -83,16 +90,14 @@ def create():
         language = request.form['language']
         committee_type = request.form['type']
         code = request.form['code'].strip()
-        username = list(users.values())[0] if users else "Inconnu"  # Utilise le premier utilisateur connecté comme créateur
+        username = list(users.values())[0] if users else "Inconnu"
 
         committees = load_committees()
 
-        # Vérifier si le code existe déjà
         for COP in committees:
             if code == COP["code"]:
                 return render_template('create.html', themes=THEMES, error="Ce code est déjà utilisé.")
 
-        # Ajouter le nouveau comité
         new_committee = {
             "name": theme,
             "creator": username,
@@ -103,6 +108,7 @@ def create():
         }
         committees.append(new_committee)
         save_committees(committees)
+        socketio.emit('update_committees', committees)  # Notify clients of new committee
         return redirect(url_for('comite'))
 
     return render_template('create.html', themes=THEMES)
@@ -118,41 +124,59 @@ def handle_join(data):
     username = data['username']
     session_id = request.sid
     users[session_id] = username
-    # Annoncer l'arrivée de l'utilisateur à tous
     socketio.emit('message', {'username': 'Système', 'message': f'{username} a rejoint le salon !'})
-    # Mettre à jour la liste des utilisateurs pour tous les clients
     socketio.emit('update_users', list(users.values()))
 
-# Événement quand un message est envoyé dans le lobby principal
-@socketio.on('send_message')
-def handle_message(data):
-    username = users.get(request.sid, 'Inconnu')
-    message = data['message']
-    socketio.emit('message', {'username': username, 'message': message})
-
-# Événement pour rejoindre une salle d'attente (chat spécifique au comité)
+# Événement pour rejoindre une salle d'attente
 @socketio.on('join_waiting_room')
 def join_waiting_room(data):
     room = data['room']
+    session_id = request.sid  # Define session_id here
     join_room(room)
-    username = users.get(request.sid, 'Inconnu')
-    emit('chat_message', {'username': 'Système', 'message': f'{username} a rejoint la salle d\'attente.'}, room=room)
+    username = users.get(session_id, 'Inconnu')
+    committees = load_committees()
+    committee = next((COP for COP in committees if COP["code"] == room), None)
+    if committee:
+        if room not in players:
+            players[room] = {}
+        if session_id not in players[room]:
+            players[room][session_id] = {"username": username, "photo": "default.jpg"}  # Placeholder for photo
+            committee["participants"] = len(players[room])
+            save_committees(committees)
+        emit('update_participants', {'participants': committee["participants"], 'players': players[room]}, room=room)
+        print(f"send {committee['participants']} and {players[room]}")
+        emit('update_committees', committees, broadcast=True)  # Update all clients
+        if committee["participants"] >= 20:
+            emit('start_game', {'redirect': f"/game?code={room}"}, room=room)
 
 # Événement pour envoyer un message dans la salle d'attente
 @socketio.on('send_chat_message')
 def handle_chat_message(data):
     room = data['room']
     message = data['message']
-    print(data)
     username = users.get(request.sid, 'Inconnu')
     emit('chat_message', {'username': username, 'message': message}, room=room)
 
 # Événement de déconnexion
 @socketio.on('disconnect')
 def handle_disconnect():
-    username = users.pop(request.sid, 'Inconnu')
+    session_id = request.sid
+    username = users.pop(session_id, 'Inconnu')
     socketio.emit('message', {'username': 'Système', 'message': f'{username} a quitté le salon.'})
     socketio.emit('update_users', list(users.values()))
+    # Mettre à jour le nombre de participants si l'utilisateur était dans une salle d'attente
+    client_rooms = rooms()
+    for room in client_rooms:
+        if room != session_id and room in [COP["code"] for COP in load_committees()]:
+            if room in players and session_id in players[room]:
+                del players[room][session_id]
+                committees = load_committees()
+                committee = next((COP for COP in committees if COP["code"] == room), None)
+                if committee:
+                    committee["participants"] = len(players.get(room, {}))
+                    save_committees(committees)
+                    emit('update_participants', {'participants': committee["participants"], 'players': players.get(room, {})}, room=room)
+                    emit('update_committees', committees, broadcast=True)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

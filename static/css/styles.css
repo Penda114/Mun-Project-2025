@@ -143,3 +143,8 @@ label {
 .chat-input input {
     flex: 1;
 }
+
+#playerList div {
+    padding: 5px;
+    border-bottom: 1px solid #ccc;
+}

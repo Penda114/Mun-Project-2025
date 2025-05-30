@@ -86,7 +86,67 @@ socket.on('chat_message', (data) => {
     }
 });
 
-// Populate committee list by fetching from the server
+socket.on('update_participants', (data) => {
+    const participantsDiv = document.getElementById('participants');
+    const participantCount = document.getElementById('participantCount');
+    const playerList = document.getElementById('playerList');
+    if (participantsDiv && participantCount && playerList) {
+        const count = data.participants;
+        participantsDiv.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const dot = document.createElement('span');
+            dot.classList.add('participant-dot');
+            participantsDiv.appendChild(dot);
+        }
+        for (let i = count; i < 20; i++) {
+            const dot = document.createElement('span');
+            dot.classList.add('empty-dot');
+            participantsDiv.appendChild(dot);
+        }
+        participantCount.textContent = `${count}/20`;
+        playerList.innerHTML = '';
+        for (let sid in data.players) {
+            const playerDiv = document.createElement('div');
+            playerDiv.textContent = data.players[sid].username;
+            playerList.appendChild(playerDiv);
+        }
+    }
+});
+
+socket.on('start_game', (data) => {
+    window.location.href = data.redirect;
+});
+
+socket.on('update_committees', (committees) => {
+    const committeeList = document.getElementById('committeeList');
+    if (committeeList) {
+        committeeList.innerHTML = '';
+        if (committees.length === 0) {
+            committeeList.innerHTML = '<p>aucun comité encore actif</p>';
+        } else {
+            committees.forEach(committee => {
+                const div = document.createElement('div');
+                div.classList.add('committee-item');
+                div.style.cursor = 'pointer';
+                div.addEventListener('click', () => {
+                    window.location.href = `/wait?code=${committee.code}`;
+                });
+                div.innerHTML = `
+                    <span>${committee.creator}</span>
+                    <span>${committee.type}</span>
+                    <span>${committee.language}</span>
+                    <span>${committee.name}</span>
+                    <span>${committee.participants}/20</span>
+                `;
+                committeeList.appendChild(div);
+            });
+        }
+    }
+});
+
+// Initial population
+updateCommitteeList();
+
 function updateCommitteeList() {
     fetch('/get_committees')
         .then(response => response.json())
@@ -118,6 +178,3 @@ function updateCommitteeList() {
         })
         .catch(error => console.error('Erreur:', error));
 }
-
-// Initial population
-updateCommitteeList();

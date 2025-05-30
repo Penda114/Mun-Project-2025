@@ -11,15 +11,8 @@
         <div class="waiting-layout">
             <div class="left-panel">
                 <h2>En attente de joueurs...</h2>
-                <div class="participants">
-                    {% for i in range(committee.participants) %}
-                        <span class="participant-dot"></span>
-                    {% endfor %}
-                    {% for i in range(20 - committee.participants) %}
-                        <span class="empty-dot"></span>
-                    {% endfor %}
-                </div>
-                <p>{{ committee.participants }}/20</p>
+                <div id="participants"></div>
+                <p id="participantCount"></p>
             </div>
             <div class="right-panel">
                 <h2>Chat général</h2>

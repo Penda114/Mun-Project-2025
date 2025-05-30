@@ -4,7 +4,7 @@
         "creator": "Nom Joueur 1",
         "type": "vocal",
         "language": "Fran\u00e7ais",
-        "participants": 5,
+        "participants": 1,
         "code": "1234"
     },
     {
@@ -12,7 +12,7 @@
         "creator": "Nom Joueur 2",
         "type": "chat",
         "language": "Anglais",
-        "participants": 10,
+        "participants": 0,
         "code": "5678"
     },
     {
